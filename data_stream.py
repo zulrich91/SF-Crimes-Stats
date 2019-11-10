@@ -74,10 +74,12 @@ def run_spark_job(spark):
                     .withColumn("call_datetime", udf_convert_time(distinct_table.call_datetime))
 
     # TODO apply aggregations using windows function to see how many calls occurred in 2 day span
-    calls_per_2_days = converted_df\
-                        .groupBy(psf.window(converted_df.call_datetime, "2 day"))\
-                        .agg(psf.count("crime_id").alias("calls_per_2_day"))
+    calls_per_2_days = distinct_table\
+                        .withWatermark("call_datetime", "2 minutes")\
+                        .groupBy(psf.window(distinct_table.call_datetime, "2 days"))\
+                        .agg(psf.count("crime_id").alias("calls_per_2_day"))\
                         .select("calls_per_2_day")
+    
     # TODO write output stream 
     query = counts_df.writeStream\
             .outputMode('Complete')\
